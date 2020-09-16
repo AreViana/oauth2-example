@@ -1,25 +1,34 @@
 import {
   BadRequestException,
   HttpException,
+  HttpService,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthorizationCode, Token } from 'simple-oauth2';
-import * as fetch from 'node-fetch';
+import { AuthorizationCode } from 'simple-oauth2';
+import { Observable } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { ProfileDto } from '../dto/response/profile.dto';
+import { TokenDto } from '../dto/response/token.dto';
 
 @Injectable()
 export class AzureService {
   private client: AuthorizationCode;
   private redirectUrl: string;
+  private scope: string;
   private readonly state = 'MyOwnState';
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+  ) {
     const host = this.configService.get<string>('API_HOST');
     const clientId = this.configService.get<string>('AZURE_CLIENT_ID');
     const clientSecret = this.configService.get<string>('AZURE_CLIENT_SECRET');
     const tenantId = this.configService.get<string>('AZURE_TENANT_ID');
 
+    this.scope = this.configService.get<string>('AZURE_SCOPE');
     this.redirectUrl = `${host}/azure/auth/token`;
 
     this.client = new AuthorizationCode({
@@ -42,13 +51,13 @@ export class AzureService {
   askAuthCode(): string {
     return this.client.authorizeURL({
       redirect_uri: this.redirectUrl,
-      scope: process.env.AZURE_SCOPE,
+      scope: this.scope,
       state: this.state,
     });
   }
 
   // 2) Exchange code for access token
-  async exchangeCodeForToken(code: string, state: string): Promise<Token> {
+  async exchangeCodeForToken(code: string, state: string): Promise<TokenDto> {
     this.validateState(state);
 
     const options = {
@@ -58,23 +67,30 @@ export class AzureService {
 
     try {
       const accessToken = await this.client.getToken(options);
-      return accessToken.token;
+
+      return accessToken.token as TokenDto;
     } catch (error) {
       Logger.error(error.message);
     }
   }
 
   // 3) Try access token
-  async getUserProfile(token: string): Promise<unknown> {
-    const response = await fetch(`https://graph.microsoft.com/v1.0/me`, {
-      headers: { Authorization: token },
-    });
-
-    const json = response.json();
-    if (!response.status.ok) {
-      throw new HttpException(await json, response.status);
-    }
-    return json;
+  getUserProfile(token: string): Observable<ProfileDto> {
+    return this.httpService
+      .get('https://graph.microsoft.com/v1.0/me', {
+        headers: { Authorization: token },
+      })
+      .pipe(
+        map(response => response.data),
+        catchError(error => {
+          const errorData = error.response.data;
+          Logger.error(errorData);
+          throw new HttpException(
+            errorData.error.message,
+            error.response.status,
+          );
+        }),
+      );
   }
 
   private validateState(state: string) {
