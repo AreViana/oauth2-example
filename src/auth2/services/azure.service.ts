@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthorizationCode, Token } from 'simple-oauth2';
@@ -34,4 +36,37 @@ export class AzureService {
     });
   }
 
+  // 1) Redirect to authorize view
+  askAuthCode(): string {
+    return this.client.authorizeURL({
+      redirect_uri: this.redirectUrl,
+      scope: process.env.AZURE_SCOPE,
+      state: this.state,
+    });
+  }
+
+  // 2) Exchange code for access token
+  async exchangeCodeForToken(code: string, state: string): Promise<Token> {
+    this.validateState(state);
+
+    const options = {
+      code,
+      redirect_uri: this.redirectUrl,
+    };
+
+    try {
+      const accessToken = await this.client.getToken(options);
+      return accessToken.token;
+    } catch (error) {
+      Logger.error(error.message);
+    }
+  }
+
+  private validateState(state: string) {
+    if (state === this.state) {
+      return true;
+    }
+
+    throw new BadRequestException('status changed');
+  }
 }
