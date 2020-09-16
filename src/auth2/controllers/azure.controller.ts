@@ -24,4 +24,8 @@ export class AzureController {
     return this.authtService.exchangeCodeForToken(code, state);
   }
 
+  @Get('users/me')
+  getProfile(@Headers('Authorization') bearerToken: string): unknown {
+    return this.authtService.getUserProfile(bearerToken);
+  }
 }

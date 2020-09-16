@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthorizationCode, Token } from 'simple-oauth2';
+import * as fetch from 'node-fetch';
 
 @Injectable()
 export class AzureService {
@@ -60,6 +62,19 @@ export class AzureService {
     } catch (error) {
       Logger.error(error.message);
     }
+  }
+
+  // 3) Try access token
+  async getUserProfile(token: string): Promise<unknown> {
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me`, {
+      headers: { Authorization: token },
+    });
+
+    const json = response.json();
+    if (!response.status.ok) {
+      throw new HttpException(await json, response.status);
+    }
+    return json;
   }
 
   private validateState(state: string) {
