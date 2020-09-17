@@ -1,6 +1,6 @@
-import { Controller, Get, Headers, Logger, Query, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Headers, Logger, Query } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { AuthorizeDto } from '../dto/response/authorize.dto';
 import { ProfileDto } from '../dto/response/profile.dto';
 import { TokenDto } from '../dto/response/token.dto';
 import { AzureService } from '../services/azure.service';
@@ -10,7 +10,7 @@ export class AzureController {
   constructor(private readonly authtService: AzureService) {}
 
   @Get('auth/authorize')
-  authorize(): Record<'url', string> {
+  authorize(): AuthorizeDto {
     return this.authtService.askAuthCode();
   }
 

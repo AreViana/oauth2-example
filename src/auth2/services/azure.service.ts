@@ -11,6 +11,7 @@ import { Observable } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ProfileDto } from '../dto/response/profile.dto';
 import { TokenDto } from '../dto/response/token.dto';
+import { AuthorizeDto } from '../dto/response/authorize.dto';
 
 @Injectable()
 export class AzureService {
@@ -46,8 +47,8 @@ export class AzureService {
     });
   }
 
-  // 1) Redirect to authorize view
-  askAuthCode(): Record<'url', string> {
+  // 1) Get authorize host url
+  askAuthCode(): AuthorizeDto {
     const url = this.client.authorizeURL({
       redirect_uri: this.redirectUrl,
       scope: this.scope,
