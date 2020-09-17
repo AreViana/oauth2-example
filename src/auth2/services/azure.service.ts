@@ -23,13 +23,12 @@ export class AzureService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
-    const host = this.configService.get<string>('API_HOST');
     const clientId = this.configService.get<string>('AZURE_CLIENT_ID');
     const clientSecret = this.configService.get<string>('AZURE_CLIENT_SECRET');
     const tenantId = this.configService.get<string>('AZURE_TENANT_ID');
 
     this.scope = this.configService.get<string>('AZURE_SCOPE');
-    this.redirectUrl = `${host}/azure/auth/token`;
+    this.redirectUrl = this.configService.get<string>('AZURE_REDIRECT_URL');
 
     this.client = new AuthorizationCode({
       client: {
@@ -48,12 +47,15 @@ export class AzureService {
   }
 
   // 1) Redirect to authorize view
-  askAuthCode(): string {
-    return this.client.authorizeURL({
+  askAuthCode(): Record<'url', string> {
+    const url = this.client.authorizeURL({
       redirect_uri: this.redirectUrl,
       scope: this.scope,
       state: this.state,
     });
+    Logger.log(url);
+
+    return { url };
   }
 
   // 2) Exchange code for access token

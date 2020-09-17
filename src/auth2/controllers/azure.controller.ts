@@ -10,13 +10,10 @@ export class AzureController {
   constructor(private readonly authtService: AzureService) {}
 
   @Get('auth/authorize')
-  authorize(@Res() response: Response): void {
-    const url = this.authtService.askAuthCode();
-    Logger.log(url);
-    response.redirect(url);
+  authorize(): Record<'url', string> {
+    return this.authtService.askAuthCode();
   }
 
-  // Callback
   @Get('auth/token')
   getCode(
     @Query('code') code: string,
